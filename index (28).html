@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stem Coaching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #f4f4f2;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    color: #000;
+  }
+
+  /* ── Startscherm ── */
+  #start-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    z-index: 100;
+    background: #f4f4f2;
+    transition: opacity 0.7s ease;
+  }
+  #start-screen.hidden { opacity: 0; pointer-events: none; }
+  #start-screen h1 {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 0.55rem;
+  }
+  #start-screen p.sub {
+    font-size: clamp(1rem, 2.2vw, 1.25rem);
+    font-style: italic;
+    color: #444;
+    margin-bottom: 3rem;
+  }
+  #start-btn {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    padding: 0.85rem 2.4rem;
+    border: 2px solid #000;
+    border-radius: 40px;
+    background: transparent;
+    color: #000;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  #start-btn:hover { background: #000; color: #fff; }
+
+  /* ── Kalibratiescherm ── */
+  #calibration-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    z-index: 90;
+    background: #f4f4f2;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s ease;
+    gap: 1.5rem;
+  }
+  #calibration-screen.visible { opacity: 1; pointer-events: auto; }
+  #calibration-screen h2 {
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #000;
+  }
+  #calibration-screen p {
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    font-style: italic;
+    color: #444;
+    max-width: 340px;
+    line-height: 1.6;
+  }
+  #cal-bar-wrap {
+    width: min(320px, 80vw);
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #cal-bar {
+    height: 100%;
+    width: 0%;
+    background: #000;
+    border-radius: 3px;
+    transition: width 0.15s linear;
+  }
+  #cal-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.70rem;
+    letter-spacing: 0.10em;
+    color: #555;
+  }
+
+  /* ── Coachingscherm ── */
+  #coaching-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.8s ease;
+    overflow-y: auto;
+    padding: 1.0rem 1.5rem 2rem 1.5rem;
+    gap: 0.85rem;
+  }
+  #coaching-screen.visible { opacity: 1; pointer-events: auto; }
+
+  #coaching-title {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  #coaching-title h1 {
+    font-size: clamp(1.1rem, 2.5vw, 1.7rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 0.1rem;
+  }
+  #coaching-title p {
+    font-size: clamp(0.75rem, 1.4vw, 0.90rem);
+    font-style: italic;
+    color: #555;
+  }
+
+  /* ── Grafiekblok ── */
+  .graph-block {
+    flex-shrink: 0;
+    width: min(520px, 96vw);
+  }
+  .graph-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.22rem;
+  }
+  .graph-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #000;
+  }
+  .graph-label span { color: #666; font-size: 0.58rem; }
+  .graph-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: #000;
+  }
+  .graph-canvas {
+    display: block;
+    width: 100%;
+    height: 88px;
+    border: 2px solid #000;
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  /* ── Uitleg ── */
+  #info-section {
+    width: min(520px, 96vw);
+    flex-shrink: 0;
+    margin-top: 0.6rem;
+    border-top: 1px solid #bbb;
+    padding-top: 1rem;
+  }
+  #info-section h2 {
+    font-size: 1.05rem;
+    font-weight: 400;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 0.8rem;
+  }
+  .info-item { margin-bottom: 1rem; }
+  .info-item h3 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 0.25rem;
+  }
+  .info-item p {
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: #222;
+  }
+
+  /* ── Debug ── */
+  #debug {
+    position: fixed; bottom: 0.5rem; right: 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.50rem;
+    color: rgba(0,0,0,0.20);
+    line-height: 1.9;
+    text-align: right;
+    z-index: 200;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- Startscherm -->
+<div id="start-screen">
+  <h1>Stem Coaching</h1>
+  <p class="sub">Zie hoe jouw stem beweegt</p>
+  <button id="start-btn">
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+      <circle cx="6" cy="6" r="5.5" stroke="currentColor"/>
+      <path d="M4.5 4l4 2-4 2V4z" fill="currentColor"/>
+    </svg>
+    Microfoon inschakelen
+  </button>
+</div>
+
+<!-- Kalibratiescherm -->
+<div id="calibration-screen">
+  <h2>Kalibratie</h2>
+  <p>Spreek gewoon gedurende 10 seconden. De app leert jouw stembasislijn kennen.</p>
+  <div id="cal-bar-wrap"><div id="cal-bar"></div></div>
+  <div id="cal-status">0 / 10 s</div>
+</div>
+
+<!-- Coachingscherm -->
+<div id="coaching-screen">
+  <div id="coaching-title">
+    <h1>Stem Coaching</h1>
+    <p>Zie hoe jouw stem beweegt</p>
+  </div>
+
+  <!-- Intonatie -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Intonatie <span>· 3 s</span></span>
+      <span class="graph-value" id="val-intonation">—</span>
+    </div>
+    <canvas id="canvas-intonation" class="graph-canvas"></canvas>
+  </div>
+
+  <!-- Toonhoogte -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Toonhoogte <span>· 5 s</span></span>
+      <span class="graph-value" id="val-pitch">—</span>
+    </div>
+    <canvas id="canvas-pitch" class="graph-canvas"></canvas>
+  </div>
+
+  <!-- Volume -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Volume <span>· 3 s</span></span>
+      <span class="graph-value" id="val-volume">—</span>
+    </div>
+    <canvas id="canvas-volume" class="graph-canvas"></canvas>
+  </div>
+
+  <!-- Pauzes -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Pauzegebruik <span>· 10 s</span></span>
+      <span class="graph-value" id="val-pause">—</span>
+    </div>
+    <canvas id="canvas-pause" class="graph-canvas"></canvas>
+  </div>
+
+  <!-- Uitleg -->
+  <div id="info-section">
+    <h2>Uitleg</h2>
+    <div class="info-item">
+      <h3>Intonatie</h3>
+      <p>Melodische variatie van jouw stem in een venster van 3 seconden, gemeten als het semitoombereik (p10–p90 van F0). Hoog = expressief en gevarieerd. Laag = egaal en monotoon. Onafhankelijk van persoon of microfoon.</p>
+    </div>
+    <div class="info-item">
+      <h3>Toonhoogte</h3>
+      <p>Jouw mediane grondtoon (F0) ten opzichte van jouw eigen gemiddelde uit de kalibratiefase. De middenlijn is jouw persoonlijke basislijn. Hoger of lager dan het midden betekent dat je stem afwijkt van jouw eigen gemiddelde — nuttig voor het herkennen van spanning of vermoeidheid.</p>
+    </div>
+    <div class="info-item">
+      <h3>Volume</h3>
+      <p>Luidheid ten opzichte van jouw eigen kalibratiegemiddelde. De middenlijn is jouw persoonlijk normaalvolume. Variatie in volume maakt spraak levendiger en benadrukt belangrijke momenten. Een vlakke lijn duidt op weinig dynamiek.</p>
+    </div>
+    <div class="info-item">
+      <h3>Pauzegebruik</h3>
+      <p>Gemiddelde duur van pauzes in een venster van 10 seconden. Korte, frequente pauzes duiden op gejaagd spreken. Langere, bewuste pauzes geven de luisteraar verwerkingstijd en stralen rust en autoriteit uit. Optimaal is een mix van korte woordpauzes en langere zinspauzes.</p>
+    </div>
+    <div class="info-item">
+      <h3>Kalibratie</h3>
+      <p>De eerste 10 seconden meet de app jouw persoonlijke basislijn voor toonhoogte en volume. Spreek daarin gewoon, zoals je normaal zou doen. Alle metingen zijn daarna relatief aan jouw eigen stem — niet aan een externe norm.</p>
+    </div>
+  </div>
+</div>
+
+<div id="debug">
+  <span id="dbg-hz">— Hz</span><br/>
+  <span id="dbg-st">— st</span><br/>
+  <span id="dbg-rms">rms —</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  STEM COACHING — vier relatieve tijdgrafieken
+//
+//  Alle metingen zijn relatief aan de eigen stem (kalibratie 10s)
+//  zodat ze apparaat- en persoonsongevoelig zijn.
+//
+//  INTONATIE  (3s) — ongewijzigd bewaard
+//    Semitoombereik p10–p90 van F0
+//    score = clamp((st - 3) / 15, 0, 1)
+//
+//  TOONHOOGTE  (5s)
+//    Mediaan F0 relatief aan kalibratiegemiddelde
+//    Schaal: ±6 semitonen rond eigen gemiddelde → 0–1
+//    Middenpunt (0.5) = eigen kalibratiegemiddelde
+//
+//  VOLUME  (3s)
+//    RMS relatief aan kalibratie-RMS-gemiddelde
+//    Schaal: 0–3× eigen gemiddelde → 0–1 (0.33 = eigen norm)
+//    Middenpunt (0.33) = eigen kalibratiegemiddelde
+//
+//  PAUZEGEBRUIK  (10s)
+//    Gemiddelde pauzelengte in ms, geclipt op 0–2000ms
+//    score = clamp(gemiddeldePauze / 2000, 0, 1)
+//    Hoog = lange pauzes (rustig, doordacht)
+//    Laag = korte of geen pauzes (gejaagd)
+// ═══════════════════════════════════════════════════════════════
+
+(function () {
+  'use strict';
+
+  const INT_INTONATION = 3000;
+  const INT_PITCH      = 5000;
+  const INT_VOLUME     = 3000;
+  const INT_PAUSE      = 10000;
+  const CAL_DURATION   = 10000;  // ms kalibratie
+  const MAX_PTS        = 40;
+  const RMS_GATE_INIT  = 0.004;  // wordt na kalibratie automatisch ingesteld
+
+  // DOM
+  const startScreen       = document.getElementById('start-screen');
+  const calibrationScreen = document.getElementById('calibration-screen');
+  const coachingScreen    = document.getElementById('coaching-screen');
+  const startBtn          = document.getElementById('start-btn');
+  const calBar            = document.getElementById('cal-bar');
+  const calStatus         = document.getElementById('cal-status');
+
+  const canvases = {
+    intonation: document.getElementById('canvas-intonation'),
+    pitch:      document.getElementById('canvas-pitch'),
+    volume:     document.getElementById('canvas-volume'),
+    pause:      document.getElementById('canvas-pause'),
+  };
+  const ctxs = {};
+  Object.keys(canvases).forEach(k => ctxs[k] = canvases[k].getContext('2d'));
+
+  const valEls = {
+    intonation: document.getElementById('val-intonation'),
+    pitch:      document.getElementById('val-pitch'),
+    volume:     document.getElementById('val-volume'),
+    pause:      document.getElementById('val-pause'),
+  };
+
+  const dbgHz  = document.getElementById('dbg-hz');
+  const dbgSt  = document.getElementById('dbg-st');
+  const dbgRms = document.getElementById('dbg-rms');
+
+  // Audio
+  let audioCtx    = null;
+  let analyser    = null;
+  let buffer      = null;
+  let isListening = false;
+
+  // Kalibratie
+  let isCalibrating   = false;
+  let calStartTime    = 0;
+  let calRmsSamples   = [];   // RMS waarden tijdens kalibratie
+  let calPitchSamples = [];   // Hz waarden tijdens kalibratie
+  let calRmsGate      = RMS_GATE_INIT;
+  let calRmsMean      = 0.02; // gemiddelde RMS eigen stem
+  let calPitchMean    = 150;  // gemiddelde F0 eigen stem (Hz)
+
+  // Rolling buffers
+  let stampedPitches  = [];   // [{hz, t}] rolling 5s
+  let stampedRms      = [];   // [{rms, t}] rolling 3s
+
+  // Pauze tracking
+  let inPause         = false;
+  let pauseStart      = 0;
+  let pauseLengths    = [];   // ms — pauzes in huidig 10s venster
+  let pauseWindowStart= 0;
+
+  // Geschiedenis
+  let history = {
+    intonation: [],
+    pitch:      [],
+    volume:     [],
+    pause:      [],
+  };
+
+  // ─────────────────────────────────────────────
+  //  YIN — ongewijzigd
+  // ─────────────────────────────────────────────
+  function yinPitch(float32, sampleRate) {
+    const half = Math.floor(float32.length / 2);
+    const threshold = 0.12;
+    const diff = new Float32Array(half);
+    for (let tau = 1; tau < half; tau++) {
+      let s = 0;
+      for (let i = 0; i < half; i++) {
+        const d = float32[i] - float32[i + tau];
+        s += d * d;
+      }
+      diff[tau] = s;
+    }
+    const cmnd = new Float32Array(half);
+    cmnd[0] = 1;
+    let running = 0;
+    for (let tau = 1; tau < half; tau++) {
+      running += diff[tau];
+      cmnd[tau] = diff[tau] * tau / running;
+    }
+    let tau = 2;
+    while (tau < half) {
+      if (cmnd[tau] < threshold) {
+        while (tau + 1 < half && cmnd[tau + 1] < cmnd[tau]) tau++;
+        break;
+      }
+      tau++;
+    }
+    if (tau === half || cmnd[tau] >= threshold) return -1;
+    if (tau > 0 && tau < half - 1) {
+      const s0 = cmnd[tau-1], s1 = cmnd[tau], s2 = cmnd[tau+1];
+      tau += (s2 - s0) / (2 * (2*s1 - s2 - s0));
+    }
+    return sampleRate / tau;
+  }
+
+  // ─────────────────────────────────────────────
+  //  INTONATIE — ongewijzigd
+  // ─────────────────────────────────────────────
+  function computeIntonation() {
+    const now    = performance.now();
+    const cutoff = now - INT_INTONATION;
+    const valid  = stampedPitches
+      .filter(p => p.t >= cutoff && p.hz > 60 && p.hz < 600)
+      .map(p => p.hz);
+    if (valid.length < 5) return null;
+    const sorted = [...valid].sort((a, b) => a - b);
+    const n   = sorted.length;
+    const p10 = sorted[Math.max(0, Math.floor(n * 0.10))];
+    const p90 = sorted[Math.min(n-1, Math.floor(n * 0.90))];
+    if (p10 <= 0 || p90 <= p10) return 0;
+    const semitones = 12 * Math.log2(p90 / p10);
+    dbgSt.textContent = semitones.toFixed(1) + ' st';
+    return Math.max(0, Math.min((semitones - 3) / 15, 1.0));
+  }
+
+  // ─────────────────────────────────────────────
+  //  TOONHOOGTE — relatief aan kalibratie
+  //  Schaal: ±6 semitonen → 0.0–1.0, midden=0.5
+  // ─────────────────────────────────────────────
+  function computePitch() {
+    const now    = performance.now();
+    const cutoff = now - INT_PITCH;
+    const valid  = stampedPitches
+      .filter(p => p.t >= cutoff && p.hz > 60 && p.hz < 600)
+      .map(p => p.hz);
+    if (valid.length < 5) return { score: null, hz: null };
+    const sorted   = [...valid].sort((a, b) => a - b);
+    const medianHz = sorted[Math.floor(sorted.length / 2)];
+    // Verschil in semitonen t.o.v. kalibratiemiddelpunt
+    const deltaSt  = 12 * Math.log2(medianHz / calPitchMean);
+    // ±6 semitonen → 0–1, 0 semitonen = 0.5
+    const score    = 0.5 + deltaSt / 12;
+    return {
+      score: Math.max(0, Math.min(score, 1)),
+      hz:    Math.round(medianHz),
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  //  VOLUME — relatief aan kalibratie
+  //  Schaal: 0–3× eigen gemiddelde → 0–1
+  //  0.33 = eigen norm (kalibratiemiddelpunt)
+  // ─────────────────────────────────────────────
+  function computeVolume() {
+    const now    = performance.now();
+    const cutoff = now - INT_VOLUME;
+    const valid  = stampedRms
+      .filter(s => s.t >= cutoff && s.rms > calRmsGate)
+      .map(s => s.rms);
+    if (valid.length < 3) return null;
+    const mean  = valid.reduce((a, b) => a + b, 0) / valid.length;
+    // Ratio t.o.v. kalibratiegemiddelde, geclipped op 0–3×
+    const ratio = mean / calRmsMean;
+    return Math.max(0, Math.min(ratio / 3, 1.0));
+  }
+
+  // ─────────────────────────────────────────────
+  //  PAUZEGEBRUIK
+  //  Gemiddelde pauzelengte (ms) in het 10s venster
+  //  Alleen pauzes tussen 80ms en 3000ms tellen mee
+  //  (< 80ms = co-articulatie, > 3s = stilte/einde)
+  //  score = clamp(gemiddelde / 1500, 0, 1)
+  // ─────────────────────────────────────────────
+  function computePause() {
+    const relevant = pauseLengths.filter(l => l >= 80 && l <= 3000);
+    if (relevant.length === 0) return 0;
+    const avg = relevant.reduce((a, b) => a + b, 0) / relevant.length;
+    return Math.max(0, Math.min(avg / 1500, 1.0));
+  }
+
+  // ─────────────────────────────────────────────
+  //  GRAFIEK TEKENEN — één kleur per grafiek, simpel
+  // ─────────────────────────────────────────────
+  function drawGraph(canvasEl, ctxEl, pts, color, midLine) {
+    const W = canvasEl.offsetWidth;
+    const H = canvasEl.offsetHeight || 88;
+    canvasEl.width  = W;
+    canvasEl.height = H;
+
+    // Achtergrond
+    ctxEl.fillStyle = '#fff';
+    ctxEl.fillRect(0, 0, W, H);
+
+    // Midlijn (optioneel — voor relatieve grafieken)
+    if (midLine !== undefined) {
+      const my = H - midLine * H * 0.88 - H * 0.06;
+      ctxEl.strokeStyle = 'rgba(0,0,0,0.10)';
+      ctxEl.lineWidth   = 1;
+      ctxEl.setLineDash([5, 5]);
+      ctxEl.beginPath();
+      ctxEl.moveTo(0, my);
+      ctxEl.lineTo(W, my);
+      ctxEl.stroke();
+      ctxEl.setLineDash([]);
+    }
+
+    // Rasterlijnen (kwart/driekwart)
+    ctxEl.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctxEl.lineWidth = 1;
+    [0.25, 0.75].forEach(frac => {
+      const y = H - frac * H * 0.88 - H * 0.06;
+      ctxEl.beginPath();
+      ctxEl.moveTo(0, y);
+      ctxEl.lineTo(W, y);
+      ctxEl.stroke();
+    });
+
+    const nonNull = pts.filter(p => p !== null);
+    if (nonNull.length < 2) return;
+
+    const n   = pts.length;
+    const xOf = i => n > 1 ? (i / (n - 1)) * W : 0;
+    // Y met kleine marge boven/onder zodat lijn nooit tegen de rand zit
+    const yOf = v => H - v * H * 0.88 - H * 0.06;
+
+    ctxEl.strokeStyle = color;
+    ctxEl.lineWidth   = 2.5;
+    ctxEl.lineCap     = 'round';
+    ctxEl.lineJoin    = 'round';
+
+    ctxEl.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      if (pts[i] === null) { started = false; continue; }
+      if (!started) { ctxEl.moveTo(xOf(i), yOf(pts[i])); started = true; }
+      else            ctxEl.lineTo(xOf(i), yOf(pts[i]));
+    }
+    ctxEl.stroke();
+
+    // Punten
+    ctxEl.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      if (pts[i] === null) continue;
+      ctxEl.beginPath();
+      ctxEl.arc(xOf(i), yOf(pts[i]), 3.2, 0, Math.PI * 2);
+      ctxEl.fill();
+    }
+
+    // "Nu" stippellijn rechts
+    const last = [...pts].reverse().find(p => p !== null);
+    if (last !== undefined) {
+      ctxEl.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctxEl.lineWidth   = 1;
+      ctxEl.setLineDash([4, 4]);
+      ctxEl.beginPath();
+      ctxEl.moveTo(xOf(n-1), 0);
+      ctxEl.lineTo(xOf(n-1), H);
+      ctxEl.stroke();
+      ctxEl.setLineDash([]);
+    }
+  }
+
+  function redrawAll() {
+    // Intonatie: blauw, geen midlijn (start bij 0)
+    drawGraph(canvases.intonation, ctxs.intonation,
+      history.intonation, 'hsl(220,80%,45%)');
+
+    // Toonhoogte: paars, midlijn op 0.5 (= eigen gemiddelde)
+    drawGraph(canvases.pitch, ctxs.pitch,
+      history.pitch, 'hsl(280,60%,42%)', 0.5);
+
+    // Volume: groen, midlijn op 0.33 (= eigen norm = 1× gemiddelde)
+    drawGraph(canvases.volume, ctxs.volume,
+      history.volume, 'hsl(155,60%,32%)', 0.33);
+
+    // Pauze: oranje, geen midlijn
+    drawGraph(canvases.pause, ctxs.pause,
+      history.pause, 'hsl(30,85%,40%)');
+  }
+
+  // ─────────────────────────────────────────────
+  //  MEETTIMERS
+  // ─────────────────────────────────────────────
+  function measureIntonation() {
+    const score = computeIntonation();
+    history.intonation.push(score);
+    if (history.intonation.length > MAX_PTS) history.intonation.shift();
+
+    if (score !== null) {
+      valEls.intonation.textContent =
+        score < 0.40 ? 'Laag' : score < 0.70 ? 'Gemiddeld' : 'Hoog';
+    } else {
+      valEls.intonation.textContent = '—';
+    }
+    redrawAll();
+    setTimeout(measureIntonation, INT_INTONATION);
+  }
+
+  function measurePitch() {
+    const { score, hz } = computePitch();
+    history.pitch.push(score);
+    if (history.pitch.length > MAX_PTS) history.pitch.shift();
+    valEls.pitch.textContent = hz !== null ? hz + ' Hz' : '—';
+    redrawAll();
+    setTimeout(measurePitch, INT_PITCH);
+  }
+
+  function measureVolume() {
+    const score = computeVolume();
+    history.volume.push(score);
+    if (history.volume.length > MAX_PTS) history.volume.shift();
+
+    if (score !== null) {
+      const ratio = score * 3;  // terugrekenen naar ×-factor
+      valEls.volume.textContent = ratio.toFixed(1) + '×';
+    } else {
+      valEls.volume.textContent = '—';
+    }
+    redrawAll();
+    setTimeout(measureVolume, INT_VOLUME);
+  }
+
+  function measurePause() {
+    const score = computePause();
+    history.pause.push(score);
+    if (history.pause.length > MAX_PTS) history.pause.shift();
+
+    const relevant = pauseLengths.filter(l => l >= 80 && l <= 3000);
+    if (relevant.length > 0) {
+      const avg = relevant.reduce((a, b) => a + b, 0) / relevant.length;
+      valEls.pause.textContent = Math.round(avg) + ' ms';
+    } else {
+      valEls.pause.textContent = '—';
+    }
+
+    // Reset pauzevenster
+    pauseLengths     = [];
+    pauseWindowStart = performance.now();
+
+    redrawAll();
+    setTimeout(measurePause, INT_PAUSE);
+  }
+
+  // ─────────────────────────────────────────────
+  //  AUDIOLUS
+  // ─────────────────────────────────────────────
+  function sampleLoop() {
+    if (!isListening) return;
+    requestAnimationFrame(sampleLoop);
+
+    analyser.getFloatTimeDomainData(buffer);
+
+    let rms = 0;
+    for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i];
+    rms = Math.sqrt(rms / buffer.length);
+    dbgRms.textContent = 'rms ' + rms.toFixed(4);
+
+    const now      = performance.now();
+    const isVoiced = rms > calRmsGate;
+
+    // Kalibratie: verzamel data
+    if (isCalibrating) {
+      calRmsSamples.push(rms);
+      if (isVoiced) {
+        const hz = yinPitch(buffer, audioCtx.sampleRate);
+        if (hz > 60 && hz < 600) calPitchSamples.push(hz);
+      }
+      const elapsed = now - calStartTime;
+      const pct     = Math.min(elapsed / CAL_DURATION * 100, 100);
+      calBar.style.width   = pct + '%';
+      calStatus.textContent = Math.min(Math.floor(elapsed / 1000), 10) + ' / 10 s';
+
+      if (elapsed >= CAL_DURATION) finishCalibration();
+      return;
+    }
+
+    // Stamped pitches & RMS bijhouden
+    if (isVoiced) {
+      const hz = yinPitch(buffer, audioCtx.sampleRate);
+      if (hz > 60 && hz < 600) {
+        stampedPitches.push({ hz, t: now });
+        dbgHz.textContent = hz.toFixed(0) + ' Hz';
+      }
+      stampedRms.push({ rms, t: now });
+    } else {
+      dbgHz.textContent = '— Hz';
+    }
+
+    // Pauze detectie
+    if (!isVoiced && !inPause) {
+      inPause    = true;
+      pauseStart = now;
+    } else if (isVoiced && inPause) {
+      inPause = false;
+      const len = now - pauseStart;
+      pauseLengths.push(len);
+    }
+
+    // Buffers opschonen
+    if (stampedPitches.length > 600) {
+      const c = now - INT_PITCH;
+      stampedPitches = stampedPitches.filter(p => p.t >= c);
+    }
+    if (stampedRms.length > 300) {
+      const c = now - INT_VOLUME;
+      stampedRms = stampedRms.filter(s => s.t >= c);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  KALIBRATIE AFRONDEN
+  // ─────────────────────────────────────────────
+  function finishCalibration() {
+    isCalibrating = false;
+
+    // RMS: gemiddelde van voiced frames als norm
+    const voicedRms = calRmsSamples.filter(r => r > RMS_GATE_INIT);
+    calRmsMean = voicedRms.length > 5
+      ? voicedRms.reduce((a,b) => a+b,0) / voicedRms.length
+      : 0.02;
+
+    // Gate: 30% van het kalibratiegemiddelde (adaptatief)
+    calRmsGate = calRmsMean * 0.30;
+
+    // Pitch: mediaan als persoonlijke baseline
+    if (calPitchSamples.length > 5) {
+      const s = [...calPitchSamples].sort((a,b) => a-b);
+      calPitchMean = s[Math.floor(s.length / 2)];
+    }
+
+    console.log('Kalibratie klaar:', {
+      calRmsMean: calRmsMean.toFixed(4),
+      calRmsGate: calRmsGate.toFixed(4),
+      calPitchMean: calPitchMean.toFixed(1),
+    });
+
+    calibrationScreen.classList.remove('visible');
+    setTimeout(() => {
+      coachingScreen.classList.add('visible');
+      pauseWindowStart = performance.now();
+
+      // Start meetcycli
+      setTimeout(measureIntonation, INT_INTONATION);
+      setTimeout(measurePitch,      INT_PITCH);
+      setTimeout(measureVolume,     INT_VOLUME);
+      setTimeout(measurePause,      INT_PAUSE);
+    }, 400);
+  }
+
+  // ─────────────────────────────────────────────
+  //  OPSTARTEN
+  // ─────────────────────────────────────────────
+  async function startAudio() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+      const src = audioCtx.createMediaStreamSource(stream);
+      analyser  = audioCtx.createAnalyser();
+      analyser.fftSize               = 2048;
+      analyser.smoothingTimeConstant = 0;
+      src.connect(analyser);
+      buffer = new Float32Array(analyser.fftSize);
+
+      isListening   = true;
+      isCalibrating = true;
+      calStartTime  = performance.now();
+
+      startScreen.classList.add('hidden');
+      setTimeout(() => calibrationScreen.classList.add('visible'), 300);
+
+      sampleLoop();
+
+    } catch (err) {
+      startBtn.textContent = 'Toegang geweigerd';
+      startBtn.style.opacity = '0.5';
+      startBtn.style.cursor  = 'default';
+    }
+  }
+
+  startBtn.addEventListener('click', () => {
+    startBtn.textContent = 'Bezig…';
+    startBtn.disabled    = true;
+    startAudio();
+  });
+
+  window.addEventListener('resize', redrawAll);
+
+})();
+</script>
+</body>
+</html>
