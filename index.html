@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voice Coaching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #f4f4f2;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    color: rgba(0,0,0,0.70);
+  }
+
+  /* ── Start screen ── */
+  #start-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    z-index: 100;
+    background: #f4f4f2;
+    transition: opacity 0.7s ease;
+  }
+  #start-screen.hidden { opacity: 0; pointer-events: none; }
+  #start-screen h1 {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.78);
+    line-height: 1;
+    margin-bottom: 0.55rem;
+  }
+  #start-screen p.sub {
+    font-size: clamp(1rem, 2.2vw, 1.25rem);
+    font-style: italic;
+    color: rgba(0,0,0,0.35);
+    letter-spacing: 0.05em;
+    margin-bottom: 3rem;
+  }
+  #start-btn {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    padding: 0.85rem 2.4rem;
+    border: 1.5px solid rgba(0,0,0,0.20);
+    border-radius: 40px;
+    background: transparent;
+    color: rgba(0,0,0,0.55);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.25s, border-color 0.25s, color 0.25s, transform 0.15s;
+  }
+  #start-btn:hover {
+    background: rgba(0,0,0,0.05);
+    border-color: rgba(0,0,0,0.35);
+    color: rgba(0,0,0,0.80);
+    transform: translateY(-1px);
+  }
+
+  /* ── Coaching screen ── */
+  #coaching-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.8s ease;
+    padding: 1.2rem 2.5rem 1.2rem 3.5rem; /* left padding for y-axis labels */
+    gap: 1.0rem;
+    overflow-y: auto;
+  }
+  #coaching-screen.visible { opacity: 1; pointer-events: auto; }
+
+  #coaching-title {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  #coaching-title h1 {
+    font-size: clamp(1.1rem, 2.5vw, 1.7rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.42);
+    margin-bottom: 0.15rem;
+  }
+  #coaching-title p {
+    font-size: clamp(0.75rem, 1.4vw, 0.90rem);
+    font-style: italic;
+    color: rgba(0,0,0,0.22);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Graph block (shared style) ── */
+  .graph-block {
+    flex-shrink: 0;
+    width: min(520px, 88vw);
+    position: relative;
+  }
+  .graph-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.3rem;
+  }
+  .graph-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.60rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.30);
+  }
+  .graph-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.60rem;
+    letter-spacing: 0.08em;
+    color: rgba(0,0,0,0.22);
+  }
+  .graph-canvas {
+    display: block;
+    width: 100%;
+    height: 80px;
+    border: 1.5px solid rgba(0,0,0,0.10);
+    border-radius: 4px;
+    background: #ffffff;
+  }
+
+  /* Y-axis labels — absolute, left of canvas */
+  .y-axis {
+    position: absolute;
+    left: -38px;
+    top: 24px; /* below graph-header */
+    height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .y-tick {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.48rem;
+    letter-spacing: 0.04em;
+    color: rgba(0,0,0,0.22);
+    line-height: 1;
+  }
+
+  /* ── Debug ── */
+  #debug {
+    position: fixed; bottom: 0.8rem; right: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: rgba(0,0,0,0.16);
+    letter-spacing: 0.06em;
+    line-height: 1.9;
+    text-align: right;
+    z-index: 200;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Start screen ── -->
+<div id="start-screen">
+  <h1>Voice Coaching</h1>
+  <p class="sub">See how your voice moves</p>
+  <button id="start-btn">
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+      <circle cx="6" cy="6" r="5.5" stroke="currentColor"/>
+      <path d="M4.5 4l4 2-4 2V4z" fill="currentColor"/>
+    </svg>
+    Allow microphone
+  </button>
+</div>
+
+<!-- ── Coaching screen ── -->
+<div id="coaching-screen">
+  <div id="coaching-title">
+    <h1>Voice Coaching</h1>
+    <p>See how your voice moves</p>
+  </div>
+
+  <!-- Graph 1: Intonation (3 s) -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Intonation &nbsp;<span style="opacity:.5">· 3 s</span></span>
+      <span class="graph-value" id="val-intonation">—</span>
+    </div>
+    <div style="position:relative">
+      <div class="y-axis">
+        <span class="y-tick" style="color:hsl(5,75%,46%)">High</span>
+        <span class="y-tick" style="color:hsl(135,60%,35%)">Med</span>
+        <span class="y-tick" style="color:hsl(225,75%,48%)">Low</span>
+      </div>
+      <canvas id="canvas-intonation" class="graph-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Graph 2: Pitch / F0 (5 s) -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Pitch &nbsp;<span style="opacity:.5">· 5 s</span></span>
+      <span class="graph-value" id="val-pitch">—</span>
+    </div>
+    <div style="position:relative">
+      <div class="y-axis">
+        <span class="y-tick">High</span>
+        <span class="y-tick">Med</span>
+        <span class="y-tick">Low</span>
+      </div>
+      <canvas id="canvas-pitch" class="graph-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Graph 3: Speech rate (5 s) -->
+  <div class="graph-block">
+    <div class="graph-header">
+      <span class="graph-label">Speech rate &nbsp;<span style="opacity:.5">· 5 s</span></span>
+      <span class="graph-value" id="val-rate">—</span>
+    </div>
+    <div style="position:relative">
+      <div class="y-axis">
+        <span class="y-tick">Fast</span>
+        <span class="y-tick">Med</span>
+        <span class="y-tick">Slow</span>
+      </div>
+      <canvas id="canvas-rate" class="graph-canvas"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<div id="debug">
+  <span id="dbg-hz">— Hz</span><br/>
+  <span id="dbg-st">— st</span><br/>
+  <span id="dbg-rms">rms —</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  VOICE COACHING — three time-series graphs
+//
+//  INTONATION  (every 3 s)
+//    Semitone range p10–p90 of F0 window
+//    score = clamp((st - 3) / 15, 0, 1)
+//    Colour zones: blue / green / red
+//
+//  PITCH  (every 5 s)
+//    Median F0 of voiced frames in window
+//    Normalised against a speaker's own running range
+//    (absolute Hz shown in value label)
+//
+//  SPEECH RATE  (every 5 s)
+//    Voiced-frame density: fraction of frames above RMS gate
+//    Proxies articulation tempo without needing syllable detection
+//    0 = silence, 1 = continuous speech
+// ═══════════════════════════════════════════════════════════════
+
+(function () {
+  'use strict';
+
+  // ── Intervals ──
+  const INT_INTONATION = 3000;   // ms
+  const INT_PITCH      = 5000;   // ms
+  const INT_RATE       = 5000;   // ms
+  const MAX_PTS        = 40;     // max graph points kept
+  const RMS_GATE       = 0.006;  // energy threshold for voice
+
+  // ── DOM ──
+  const startScreen    = document.getElementById('start-screen');
+  const coachingScreen = document.getElementById('coaching-screen');
+  const startBtn       = document.getElementById('start-btn');
+
+  const canvases = {
+    intonation: document.getElementById('canvas-intonation'),
+    pitch:      document.getElementById('canvas-pitch'),
+    rate:       document.getElementById('canvas-rate'),
+  };
+  const ctxs = {
+    intonation: canvases.intonation.getContext('2d'),
+    pitch:      canvases.pitch.getContext('2d'),
+    rate:       canvases.rate.getContext('2d'),
+  };
+  const valEls = {
+    intonation: document.getElementById('val-intonation'),
+    pitch:      document.getElementById('val-pitch'),
+    rate:       document.getElementById('val-rate'),
+  };
+
+  const dbgHz  = document.getElementById('dbg-hz');
+  const dbgSt  = document.getElementById('dbg-st');
+  const dbgRms = document.getElementById('dbg-rms');
+
+  // ── Audio state ──
+  let audioCtx  = null;
+  let analyser  = null;
+  let buffer    = null;
+  let isListening = false;
+
+  // ── Per-frame collection ──
+  // Shared: pitch frames collected continuously
+  // Rate: total frames counted vs voiced frames
+  let pitchFrames      = [];    // all Hz values since last clear
+  let totalFrames      = 0;     // frames since rate window started
+  let voicedFrames     = 0;     // voiced frames since rate window started
+
+  // Pitch window runs 5s; we keep a rolling 5s buffer for it
+  // (intonation uses its own 3s slice from pitchFrames)
+  // We timestamp each pitch frame so we can slice by age
+  let stampedPitches   = [];    // [{hz, t}]
+
+  // ── History arrays (one entry per measurement) ──
+  let history = {
+    intonation: [],   // score 0–1
+    pitch:      [],   // normalised 0–1
+    rate:       [],   // 0–1
+  };
+
+  // Running pitch range for self-normalisation
+  let pitchMin = Infinity;
+  let pitchMax = -Infinity;
+
+  // Timer bookkeeping
+  let winStartIntonation = 0;
+  let winStartPitch      = 0;
+  let winStartRate       = 0;
+
+  // ─────────────────────────────────────────────
+  //  YIN PITCH DETECTION
+  // ─────────────────────────────────────────────
+  function yinPitch(float32, sampleRate) {
+    const half = Math.floor(float32.length / 2);
+    const threshold = 0.12;
+    const diff = new Float32Array(half);
+    for (let tau = 1; tau < half; tau++) {
+      let s = 0;
+      for (let i = 0; i < half; i++) {
+        const d = float32[i] - float32[i + tau];
+        s += d * d;
+      }
+      diff[tau] = s;
+    }
+    const cmnd = new Float32Array(half);
+    cmnd[0] = 1;
+    let running = 0;
+    for (let tau = 1; tau < half; tau++) {
+      running += diff[tau];
+      cmnd[tau] = diff[tau] * tau / running;
+    }
+    let tau = 2;
+    while (tau < half) {
+      if (cmnd[tau] < threshold) {
+        while (tau + 1 < half && cmnd[tau + 1] < cmnd[tau]) tau++;
+        break;
+      }
+      tau++;
+    }
+    if (tau === half || cmnd[tau] >= threshold) return -1;
+    if (tau > 0 && tau < half - 1) {
+      const s0 = cmnd[tau-1], s1 = cmnd[tau], s2 = cmnd[tau+1];
+      tau += (s2 - s0) / (2 * (2*s1 - s2 - s0));
+    }
+    return sampleRate / tau;
+  }
+
+  // ─────────────────────────────────────────────
+  //  INTONATION SCORE  (semitone range, 3 s window)
+  // ─────────────────────────────────────────────
+  function computeIntonation() {
+    const now    = performance.now();
+    const cutoff = now - INT_INTONATION;
+    const valid  = stampedPitches
+      .filter(p => p.t >= cutoff && p.hz > 60 && p.hz < 600)
+      .map(p => p.hz);
+
+    if (valid.length < 5) return null;
+
+    const sorted = [...valid].sort((a, b) => a - b);
+    const n   = sorted.length;
+    const p10 = sorted[Math.max(0, Math.floor(n * 0.10))];
+    const p90 = sorted[Math.min(n-1, Math.floor(n * 0.90))];
+    if (p10 <= 0 || p90 <= p10) return 0;
+
+    const semitones = 12 * Math.log2(p90 / p10);
+    dbgSt.textContent = semitones.toFixed(1) + ' st';
+    return Math.max(0, Math.min((semitones - 3) / 15, 1.0));
+  }
+
+  // ─────────────────────────────────────────────
+  //  PITCH SCORE  (median F0, 5 s window, self-normalised)
+  // ─────────────────────────────────────────────
+  function computePitch() {
+    const now    = performance.now();
+    const cutoff = now - INT_PITCH;
+    const valid  = stampedPitches
+      .filter(p => p.t >= cutoff && p.hz > 60 && p.hz < 600)
+      .map(p => p.hz);
+
+    if (valid.length < 5) return { score: null, hz: null };
+
+    const sorted = [...valid].sort((a, b) => a - b);
+    const medianHz = sorted[Math.floor(sorted.length / 2)];
+
+    // Update running range
+    pitchMin = Math.min(pitchMin, medianHz);
+    pitchMax = Math.max(pitchMax, medianHz);
+
+    // Normalise: if range < 20 Hz, treat as flat (score 0.5)
+    let score = 0.5;
+    if (pitchMax - pitchMin > 20) {
+      score = (medianHz - pitchMin) / (pitchMax - pitchMin);
+    }
+
+    return { score: Math.max(0, Math.min(score, 1)), hz: medianHz };
+  }
+
+  // ─────────────────────────────────────────────
+  //  SPEECH RATE SCORE  (voiced-frame density, 5 s)
+  //
+  //  voiced/total frames gives a 0–1 value where:
+  //    0.0 = complete silence
+  //    0.3 = slow/hesitant speech
+  //    0.6 = normal conversational pace
+  //    0.9 = fast, dense speech
+  // ─────────────────────────────────────────────
+  function computeRate() {
+    if (totalFrames < 10) return null;
+    return Math.min(voicedFrames / totalFrames, 1.0);
+  }
+
+  // ─────────────────────────────────────────────
+  //  DRAW ONE GRAPH
+  //
+  //  config: {
+  //    color: hsl string for the line
+  //    colorFn: optional fn(score) → hsl  (for colour-coded line)
+  //    yLines: [0.33, 0.67] fractional positions for grid lines
+  //    bands: [{y0, y1, color}] optional background bands
+  //  }
+  // ─────────────────────────────────────────────
+  function drawGraph(canvasEl, ctxEl, pts, config) {
+    const W = canvasEl.offsetWidth;
+    const H = canvasEl.offsetHeight || 80;
+    canvasEl.width  = W;
+    canvasEl.height = H;
+
+    // Background
+    ctxEl.fillStyle = '#ffffff';
+    ctxEl.fillRect(0, 0, W, H);
+
+    // Optional bands
+    if (config.bands) {
+      config.bands.forEach(b => {
+        ctxEl.fillStyle = b.color;
+        ctxEl.fillRect(0, b.y0 * H, W, (b.y1 - b.y0) * H);
+      });
+    }
+
+    // Grid lines
+    if (config.yLines) {
+      ctxEl.strokeStyle = 'rgba(0,0,0,0.06)';
+      ctxEl.lineWidth = 1;
+      config.yLines.forEach(frac => {
+        ctxEl.beginPath();
+        ctxEl.moveTo(0,   frac * H);
+        ctxEl.lineTo(W,   frac * H);
+        ctxEl.stroke();
+      });
+    }
+
+    const valid = pts.filter(p => p !== null);
+    if (valid.length < 2) return;
+
+    const n = pts.length;
+    // Spread all points evenly left→right.
+    // Null gaps: skip that segment.
+    const xOf = i => n > 1 ? (i / (n - 1)) * W : W / 2;
+
+    // Draw line segments
+    ctxEl.lineWidth   = 2.2;
+    ctxEl.lineCap     = 'round';
+    ctxEl.lineJoin    = 'round';
+
+    for (let i = 1; i < n; i++) {
+      if (pts[i-1] === null || pts[i] === null) continue;
+      const x0 = xOf(i - 1), x1 = xOf(i);
+      const y0 = H - pts[i-1] * H;
+      const y1 = H - pts[i]   * H;
+
+      ctxEl.strokeStyle = config.colorFn
+        ? config.colorFn(pts[i])
+        : config.color;
+
+      ctxEl.beginPath();
+      ctxEl.moveTo(x0, y0);
+      ctxEl.lineTo(x1, y1);
+      ctxEl.stroke();
+    }
+
+    // Dots
+    for (let i = 0; i < n; i++) {
+      if (pts[i] === null) continue;
+      const x = xOf(i);
+      const y = H - pts[i] * H;
+      ctxEl.fillStyle = config.colorFn
+        ? config.colorFn(pts[i])
+        : config.color;
+      ctxEl.beginPath();
+      ctxEl.arc(x, y, 3, 0, Math.PI * 2);
+      ctxEl.fill();
+    }
+
+    // "Now" dashed line at rightmost point
+    const lastNonNull = [...pts].reverse().find(p => p !== null);
+    if (lastNonNull !== undefined) {
+      const nowX = xOf(n - 1);
+      ctxEl.strokeStyle = 'rgba(0,0,0,0.10)';
+      ctxEl.lineWidth   = 1;
+      ctxEl.setLineDash([3, 3]);
+      ctxEl.beginPath();
+      ctxEl.moveTo(nowX, 0);
+      ctxEl.lineTo(nowX, H);
+      ctxEl.stroke();
+      ctxEl.setLineDash([]);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  INTONATION colour coding
+  // ─────────────────────────────────────────────
+  function intonationColor(score) {
+    if (score === null) return 'rgba(0,0,0,0.1)';
+    if (score < 0.40)   return 'hsl(225,82%,48%)';   // blue
+    if (score < 0.70)   return 'hsl(135,65%,38%)';   // green
+    return                     'hsl(5,82%,46%)';      // red
+  }
+
+  // ─────────────────────────────────────────────
+  //  REDRAW ALL GRAPHS
+  // ─────────────────────────────────────────────
+  function redrawAll() {
+    drawGraph(canvases.intonation, ctxs.intonation, history.intonation, {
+      colorFn: intonationColor,
+      yLines:  [0.30, 0.60],
+      bands: [
+        { y0: 0.00, y1: 0.30, color: 'hsla(5,82%,46%,0.05)'   },
+        { y0: 0.30, y1: 0.60, color: 'hsla(135,65%,38%,0.05)' },
+        { y0: 0.60, y1: 1.00, color: 'hsla(225,82%,48%,0.05)' },
+      ],
+    });
+
+    drawGraph(canvases.pitch, ctxs.pitch, history.pitch, {
+      color:  'hsl(280,55%,48%)',   // purple
+      yLines: [0.33, 0.67],
+    });
+
+    drawGraph(canvases.rate, ctxs.rate, history.rate, {
+      color:  'hsl(35,80%,45%)',    // amber
+      yLines: [0.33, 0.67],
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  MEASUREMENT TIMERS
+  // ─────────────────────────────────────────────
+  function measureIntonation() {
+    const score = computeIntonation();
+    history.intonation.push(score);
+    if (history.intonation.length > MAX_PTS) history.intonation.shift();
+
+    if (score !== null) {
+      const labels = ['Monotone','Monotone','Normal','Normal','Expressive'];
+      const idx    = Math.min(Math.floor(score * 5), 4);
+      valEls.intonation.textContent = labels[idx];
+    } else {
+      valEls.intonation.textContent = '—';
+    }
+
+    redrawAll();
+    winStartIntonation = performance.now();
+    setTimeout(measureIntonation, INT_INTONATION);
+  }
+
+  function measurePitch() {
+    const { score, hz } = computePitch();
+    history.pitch.push(score);
+    if (history.pitch.length > MAX_PTS) history.pitch.shift();
+
+    valEls.pitch.textContent = hz !== null ? Math.round(hz) + ' Hz' : '—';
+
+    // Reset rate counters for next window
+    totalFrames  = 0;
+    voicedFrames = 0;
+
+    redrawAll();
+    winStartPitch = performance.now();
+    setTimeout(measurePitch, INT_PITCH);
+  }
+
+  function measureRate() {
+    const score = computeRate();
+    history.rate.push(score);
+    if (history.rate.length > MAX_PTS) history.rate.shift();
+
+    if (score !== null) {
+      const pct = Math.round(score * 100);
+      valEls.rate.textContent = pct + '%';
+    } else {
+      valEls.rate.textContent = '—';
+    }
+
+    // Reset frame counters
+    totalFrames  = 0;
+    voicedFrames = 0;
+
+    redrawAll();
+    winStartRate = performance.now();
+    setTimeout(measureRate, INT_RATE);
+  }
+
+  // ─────────────────────────────────────────────
+  //  AUDIO SAMPLING LOOP
+  //  Runs every animation frame — collects data only,
+  //  never updates the display directly.
+  // ─────────────────────────────────────────────
+  function sampleLoop() {
+    if (!isListening) return;
+    requestAnimationFrame(sampleLoop);
+
+    analyser.getFloatTimeDomainData(buffer);
+
+    // RMS
+    let rms = 0;
+    for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i];
+    rms = Math.sqrt(rms / buffer.length);
+    dbgRms.textContent = 'rms ' + rms.toFixed(4);
+
+    totalFrames++;
+
+    if (rms > RMS_GATE) {
+      voicedFrames++;
+      const hz = yinPitch(buffer, audioCtx.sampleRate);
+      if (hz > 60 && hz < 600) {
+        const now = performance.now();
+        stampedPitches.push({ hz, t: now });
+        dbgHz.textContent = hz.toFixed(0) + ' Hz';
+      }
+    } else {
+      dbgHz.textContent = '— Hz';
+    }
+
+    // Trim stamped pitches older than 5 s (longest window)
+    const cutoff = performance.now() - INT_PITCH;
+    if (stampedPitches.length > 200) {
+      stampedPitches = stampedPitches.filter(p => p.t >= cutoff);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  STARTUP
+  // ─────────────────────────────────────────────
+  async function startAudio() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+      const src = audioCtx.createMediaStreamSource(stream);
+      analyser  = audioCtx.createAnalyser();
+      analyser.fftSize               = 2048;
+      analyser.smoothingTimeConstant = 0;
+      src.connect(analyser);
+      buffer = new Float32Array(analyser.fftSize);
+
+      isListening       = true;
+      winStartIntonation = winStartPitch = winStartRate = performance.now();
+
+      startScreen.classList.add('hidden');
+      setTimeout(() => coachingScreen.classList.add('visible'), 500);
+
+      sampleLoop();
+
+      // Stagger timers slightly so they don't all fire at once
+      setTimeout(measureIntonation, INT_INTONATION);
+      setTimeout(measurePitch,      INT_PITCH);
+      setTimeout(measureRate,       INT_RATE);
+
+    } catch (err) {
+      startBtn.textContent = 'Microphone access denied';
+      startBtn.style.opacity = '0.5';
+      startBtn.style.cursor  = 'default';
+    }
+  }
+
+  startBtn.addEventListener('click', () => {
+    startBtn.textContent = 'Listening…';
+    startBtn.disabled    = true;
+    startAudio();
+  });
+
+  window.addEventListener('resize', redrawAll);
+
+})();
+</script>
+</body>
+</html>
